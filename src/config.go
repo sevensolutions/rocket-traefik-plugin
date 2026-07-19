@@ -43,41 +43,53 @@ func New(uctx context.Context, next http.Handler, cfg *config.Config, name strin
 		statusCode = http.StatusServiceUnavailable
 	}
 
+	// Both modes check Rocket for maintenance status: "maintenance" mode does so on the app's
+	// real route (passing through when not in maintenance), "fallback" mode does so on the
+	// priority-1 underlay route (showing the plain fallback page when not in maintenance,
+	// since there's no working app route to fall through to in that case).
+	appId := utils.ExpandEnvironmentVariableString(strings.TrimSpace(cfg.AppId))
+	rocketBaseUrl := utils.ExpandEnvironmentVariableString(strings.TrimSpace(cfg.RocketBaseUrl))
+	identityHeader := utils.ExpandEnvironmentVariableString(cfg.RocketIdentityHeader)
+
+	if appId == "" {
+		return nil, fmt.Errorf("AppId is required")
+	}
+	if rocketBaseUrl == "" {
+		return nil, fmt.Errorf("RocketBaseUrl is required")
+	}
+
+	timeoutSeconds := cfg.RocketTimeoutSeconds
+	if timeoutSeconds <= 0 {
+		timeoutSeconds = 5
+	}
+
+	cacheTtlSeconds := cfg.CacheTtlSeconds
+	if cacheTtlSeconds <= 0 {
+		cacheTtlSeconds = 30
+	}
+
+	maintenanceHtml, err := pages.ResolveFile(cfg.MaintenancePageFile, pages.DefaultMaintenanceHtml)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load MaintenancePageFile: %w", err)
+	}
+
 	plugin := &RocketTraefikPlugin{
-		logger:     logger,
-		next:       next,
-		mode:       mode,
-		statusCode: statusCode,
+		logger:          logger,
+		next:            next,
+		mode:            mode,
+		statusCode:      statusCode,
+		appId:           appId,
+		cacheTtl:        time.Duration(cacheTtlSeconds) * time.Second,
+		rocketClient:    rocket.NewClient(rocketBaseUrl, identityHeader, time.Duration(timeoutSeconds)*time.Second, logger),
+		maintenanceHtml: maintenanceHtml,
 	}
 
 	if mode == config.ModeFallback {
-		plugin.fallbackHtml = pages.Resolve(cfg.FallbackPageContent, pages.DefaultFallbackHtml)
-	} else {
-		appId := utils.ExpandEnvironmentVariableString(strings.TrimSpace(cfg.AppId))
-		rocketBaseUrl := utils.ExpandEnvironmentVariableString(strings.TrimSpace(cfg.RocketBaseUrl))
-		identityHeader := utils.ExpandEnvironmentVariableString(cfg.RocketIdentityHeader)
-
-		if appId == "" {
-			return nil, fmt.Errorf("AppId is required when Mode is %q", config.ModeMaintenance)
+		fallbackHtml, err := pages.ResolveFile(cfg.FallbackPageFile, pages.DefaultFallbackHtml)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load FallbackPageFile: %w", err)
 		}
-		if rocketBaseUrl == "" {
-			return nil, fmt.Errorf("RocketBaseUrl is required when Mode is %q", config.ModeMaintenance)
-		}
-
-		timeoutSeconds := cfg.RocketTimeoutSeconds
-		if timeoutSeconds <= 0 {
-			timeoutSeconds = 5
-		}
-
-		cacheTtlSeconds := cfg.CacheTtlSeconds
-		if cacheTtlSeconds <= 0 {
-			cacheTtlSeconds = 30
-		}
-
-		plugin.appId = appId
-		plugin.cacheTtl = time.Duration(cacheTtlSeconds) * time.Second
-		plugin.rocketClient = rocket.NewClient(rocketBaseUrl, identityHeader, time.Duration(timeoutSeconds)*time.Second, logger)
-		plugin.maintenanceHtml = pages.Resolve(cfg.MaintenancePageContent, pages.DefaultMaintenanceHtml)
+		plugin.fallbackHtml = fallbackHtml
 	}
 
 	logger.Log(logging.LevelInfo, "Configuration loaded successfully, starting middleware in %q mode...", mode)

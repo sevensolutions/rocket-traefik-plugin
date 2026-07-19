@@ -49,15 +49,18 @@ type RocketTraefikPlugin struct {
 }
 
 func (p *RocketTraefikPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-	if p.mode == config.ModeFallback {
-		p.writeHtmlPage(rw, p.fallbackHtml)
-		return
-	}
-
 	result := p.checkMaintenance()
 
 	if !result.enabled {
 		clearBypassCookieIfPresent(rw, req)
+
+		if p.mode == config.ModeFallback {
+			// Not in maintenance, so the app is simply unreachable (not running) — there's no
+			// working route to fall through to.
+			p.writeHtmlPage(rw, p.fallbackHtml)
+			return
+		}
+
 		p.next.ServeHTTP(rw, req)
 		return
 	}

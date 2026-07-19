@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/sevensolutions/rocket-traefik-plugin/src/utils"
 )
@@ -83,11 +84,19 @@ func RenderBypassForm(requiresCode bool, invalidCode bool) string {
 	return fmt.Sprintf(bypassFormHtml, BypassQueryParam, notice)
 }
 
-// Resolve returns the (env/file-expanded) override if provided, otherwise defaultContent.
-func Resolve(override string, defaultContent string) string {
-	if override == "" {
-		return defaultContent
+// ResolveFile returns the contents of the file at path (after ${VAR} expansion) if path is
+// set, otherwise defaultContent.
+func ResolveFile(path string, defaultContent string) (string, error) {
+	if path == "" {
+		return defaultContent, nil
 	}
 
-	return utils.ExpandEnvironmentVariableString(override)
+	expandedPath := utils.ExpandEnvironmentVariableString(path)
+
+	content, err := os.ReadFile(expandedPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read %q: %w", expandedPath, err)
+	}
+
+	return string(content), nil
 }

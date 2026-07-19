@@ -21,6 +21,10 @@ http:
         rocket-traefik-plugin:
           LogLevel: DEBUG
           Mode: fallback
+          AppId: whoami
+          RocketBaseUrl: http://rocket-mock:80
+          RocketIdentityHeader: local-dev-secret
+          CacheTtlSeconds: 5
 
   routers:
     # The "real" app route. Only wins while the whoami container/router is present,
@@ -33,8 +37,9 @@ http:
       middlewares: ["rocket-maintenance@file"]
 
     # Underlay fallback route (priority 1). Traefik only falls through here when no
-    # higher-priority dynamic app router matches. Always serves the static
-    # "unavailable" page and never forwards to the backend.
+    # higher-priority dynamic app router matches. Checks Rocket the same way as the
+    # maintenance middleware above: shows the maintenance page if the app is down for
+    # maintenance, otherwise the plain "unavailable" page.
     whoami-fallback:
       entryPoints: ["web"]
       rule: "HostRegexp(`.+`)"

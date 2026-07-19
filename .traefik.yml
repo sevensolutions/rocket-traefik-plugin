@@ -19,3 +19,6 @@ iconPath: .assets/icon.png
 testData:
   LogLevel: DEBUG
   Mode: fallback
+  AppId: test-app
+  RocketBaseUrl: http://localhost
+  RocketIdentityHeader: test

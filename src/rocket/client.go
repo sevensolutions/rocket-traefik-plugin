@@ -12,7 +12,7 @@ import (
 	"github.com/sevensolutions/rocket-traefik-plugin/src/logging"
 )
 
-const identityHeaderName = "X-Rocket-Identity"
+const AuthTokenHeaderName = "X-Rocket-Identity"
 
 type MaintenanceStatus struct {
 	Enabled bool
@@ -26,20 +26,20 @@ type MaintenanceStatus struct {
 }
 
 type Client struct {
-	BaseUrl        string
-	IdentityHeader string
-	Timeout        time.Duration
-	HttpClient     *http.Client
-	Logger         *logging.Logger
+	BaseUrl    string
+	AuthToken  string
+	Timeout    time.Duration
+	HttpClient *http.Client
+	Logger     *logging.Logger
 }
 
-func NewClient(baseUrl string, identityHeader string, timeout time.Duration, logger *logging.Logger) *Client {
+func NewClient(baseUrl string, authToken string, timeout time.Duration, logger *logging.Logger) *Client {
 	return &Client{
-		BaseUrl:        strings.TrimSuffix(baseUrl, "/"),
-		IdentityHeader: identityHeader,
-		Timeout:        timeout,
-		HttpClient:     &http.Client{},
-		Logger:         logger,
+		BaseUrl:    strings.TrimSuffix(baseUrl, "/"),
+		AuthToken:  authToken,
+		Timeout:    timeout,
+		HttpClient: &http.Client{},
+		Logger:     logger,
 	}
 }
 
@@ -53,7 +53,7 @@ func (c *Client) CheckMaintenance(ctx context.Context, appId string) (Maintenanc
 	if err != nil {
 		return MaintenanceStatus{}, fmt.Errorf("failed to build rocket request: %w", err)
 	}
-	req.Header.Set(identityHeaderName, c.IdentityHeader)
+	req.Header.Set(AuthTokenHeaderName, c.AuthToken)
 
 	c.Logger.Log(logging.LevelDebug, "Checking maintenance status with Rocket: %s", requestUrl)
 
