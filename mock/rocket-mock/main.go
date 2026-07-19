@@ -15,6 +15,7 @@ import (
 type maintenanceStatus struct {
 	MaintenanceEnabled bool   `json:"maintenanceEnabled"`
 	Message            string `json:"message"`
+	AllowBypass        bool   `json:"allowBypass"`
 	BypassCode         string `json:"bypassCode"`
 }
 

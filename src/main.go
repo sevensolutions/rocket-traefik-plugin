@@ -14,12 +14,22 @@ import (
 )
 
 type maintenanceCache struct {
-	mu         sync.Mutex
-	hasValue   bool
-	enabled    bool
-	message    string
-	bypassCode string
-	fetchedAt  time.Time
+	mu          sync.Mutex
+	hasValue    bool
+	enabled     bool
+	message     string
+	allowBypass bool
+	bypassCode  string
+	fetchedAt   time.Time
+}
+
+func (c *maintenanceCache) toResult() maintenanceResult {
+	return maintenanceResult{
+		enabled:     c.enabled,
+		message:     c.message,
+		allowBypass: c.allowBypass,
+		bypassCode:  c.bypassCode,
+	}
 }
 
 type RocketTraefikPlugin struct {
@@ -44,35 +54,33 @@ func (p *RocketTraefikPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	enabled, message, bypassCode := p.checkMaintenance()
+	result := p.checkMaintenance()
 
-	if !enabled {
+	if !result.enabled {
 		clearBypassCookieIfPresent(rw, req)
 		p.next.ServeHTTP(rw, req)
 		return
 	}
 
-	if hasValidBypassCookie(req, bypassCode) {
+	if hasValidBypassCookie(req, result) {
 		p.next.ServeHTTP(rw, req)
 		return
 	}
 
-	bypassAvailable := bypassCode != ""
-
-	if bypassAvailable {
-		if code := req.URL.Query().Get(pages.BypassQueryParam); code != "" {
-			if isValidBypassCode(code, bypassCode) {
-				setBypassCookie(rw, req, bypassCode)
+	if result.allowBypass {
+		if submitted := req.URL.Query().Get(pages.BypassQueryParam); submitted != "" {
+			if isValidBypassRequest(submitted, result) {
+				setBypassCookie(rw, req, result)
 				redirectStrippingBypassParam(rw, req)
 				return
 			}
 
-			p.writeMaintenancePage(rw, message, true, bypassAvailable)
+			p.writeMaintenancePage(rw, result, true)
 			return
 		}
 	}
 
-	p.writeMaintenancePage(rw, message, false, bypassAvailable)
+	p.writeMaintenancePage(rw, result, false)
 }
 
 func (p *RocketTraefikPlugin) writeHtmlPage(rw http.ResponseWriter, htmlContent string) {
@@ -81,14 +89,15 @@ func (p *RocketTraefikPlugin) writeHtmlPage(rw http.ResponseWriter, htmlContent 
 	rw.Write([]byte(htmlContent))
 }
 
-func (p *RocketTraefikPlugin) writeMaintenancePage(rw http.ResponseWriter, message string, invalidBypassCode bool, bypassAvailable bool) {
+func (p *RocketTraefikPlugin) writeMaintenancePage(rw http.ResponseWriter, result maintenanceResult, invalidBypassCode bool) {
+	message := result.message
 	if message == "" {
 		message = pages.DefaultMaintenanceMessage
 	}
 
 	bypassForm := ""
-	if bypassAvailable {
-		bypassForm = pages.RenderBypassForm(invalidBypassCode)
+	if result.allowBypass {
+		bypassForm = pages.RenderBypassForm(result.bypassCode != "", invalidBypassCode)
 	}
 
 	body := strings.ReplaceAll(p.maintenanceHtml, "{{Message}}", html.EscapeString(message))

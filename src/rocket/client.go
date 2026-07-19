@@ -17,9 +17,11 @@ const identityHeaderName = "X-Rocket-Identity"
 type MaintenanceStatus struct {
 	Enabled bool
 	Message string
-	// BypassCode, when non-empty, is the code a visitor can submit on the maintenance page
-	// to skip maintenance mode. Rocket controls this value entirely; empty disables the
-	// bypass form.
+	// AllowBypass controls whether the maintenance page offers a way to skip maintenance mode.
+	AllowBypass bool
+	// BypassCode is optional even when AllowBypass is true: if set, visitors must submit this
+	// exact code; if empty, bypass is open and a single click grants it. Rocket controls both
+	// values entirely.
 	BypassCode string
 }
 
@@ -68,11 +70,17 @@ func (c *Client) CheckMaintenance(ctx context.Context, appId string) (Maintenanc
 	var parsed struct {
 		MaintenanceEnabled bool   `json:"maintenanceEnabled"`
 		Message            string `json:"message"`
+		AllowBypass        bool   `json:"allowBypass"`
 		BypassCode         string `json:"bypassCode"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
 		return MaintenanceStatus{}, fmt.Errorf("failed to decode rocket response: %w", err)
 	}
 
-	return MaintenanceStatus{Enabled: parsed.MaintenanceEnabled, Message: parsed.Message, BypassCode: parsed.BypassCode}, nil
+	return MaintenanceStatus{
+		Enabled:     parsed.MaintenanceEnabled,
+		Message:     parsed.Message,
+		AllowBypass: parsed.AllowBypass,
+		BypassCode:  parsed.BypassCode,
+	}, nil
 }

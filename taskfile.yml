@@ -21,15 +21,16 @@ tasks:
       - docker compose logs -f
 
   maintenance:on:
-    desc: "Turn maintenance mode on for an app (APP_ID=..., MESSAGE=..., BYPASS_CODE=...)"
+    desc: "Turn maintenance mode on (APP_ID=..., MESSAGE=..., ALLOW_BYPASS=true|false, BYPASS_CODE=... [empty = open bypass])"
     vars:
       MESSAGE: '{{.MESSAGE | default "We are upgrading things, come back soon!"}}'
+      ALLOW_BYPASS: '{{.ALLOW_BYPASS | default "true"}}'
       BYPASS_CODE: '{{.BYPASS_CODE | default "1234"}}'
     cmds:
       - |
         curl -X POST {{.MOCK_URL}}/api/v1/apps/{{.APP_ID}}/maintenance \
           -H "Content-Type: application/json" \
-          -d '{"maintenanceEnabled": true, "message": "{{.MESSAGE}}", "bypassCode": "{{.BYPASS_CODE}}"}'
+          -d '{"maintenanceEnabled": true, "message": "{{.MESSAGE}}", "allowBypass": {{.ALLOW_BYPASS}}, "bypassCode": "{{.BYPASS_CODE}}"}'
 
   maintenance:off:
     desc: "Turn maintenance mode off for an app (APP_ID=...)"

@@ -54,6 +54,10 @@ const DefaultMaintenanceHtml = `<!doctype html>
 </html>
 `
 
+const bypassButtonHtml = `<p style="margin-top: 1.5rem;">
+  <a href="?%s=1" style="display:inline-block; padding:0.5rem 1rem; border-radius:0.375rem; background:#0071e3; color:#fff; text-decoration:none;">Continue anyway</a>
+</p>`
+
 const bypassFormHtml = `<form method="get" style="margin-top: 1.5rem;">
   <label for="rocket_bypass_code" style="display:block; font-size: 0.85rem; color:#6e6e73; margin-bottom:0.4rem;">Have a bypass code?</label>
   <input type="text" id="rocket_bypass_code" name="%s" placeholder="Bypass code" style="padding:0.5rem; border-radius:0.375rem; border:1px solid #d2d2d7;">
@@ -63,9 +67,14 @@ const bypassFormHtml = `<form method="get" style="margin-top: 1.5rem;">
 
 const bypassFormInvalidCodeNotice = `<p style="color:#d70015; font-size:0.85rem; margin-top:0.5rem;">Invalid bypass code.</p>`
 
-// RenderBypassForm builds the bypass code-entry form shown on the maintenance page.
-// Only called when a BypassSecret is configured for the instance.
-func RenderBypassForm(invalidCode bool) string {
+// RenderBypassForm builds the bypass UI shown on the maintenance page. When requiresCode is
+// false, bypass is open and a single link grants it. When true, a code-entry form is shown
+// instead, with an "invalid code" notice when invalidCode is set.
+func RenderBypassForm(requiresCode bool, invalidCode bool) string {
+	if !requiresCode {
+		return fmt.Sprintf(bypassButtonHtml, BypassQueryParam)
+	}
+
 	notice := ""
 	if invalidCode {
 		notice = bypassFormInvalidCodeNotice

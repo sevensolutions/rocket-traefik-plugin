@@ -8,11 +8,26 @@ import (
 const bypassCookieName = "rocket_bypass"
 const bypassCookieMaxAgeSeconds = 24 * 60 * 60 // 24h
 
-// hasValidBypassCookie reports whether the request already carries a cookie matching the
-// current bypass code (as returned by Rocket). The cookie value is the code itself, so
-// Rocket rotating or clearing the code automatically invalidates any previously issued cookie.
-func hasValidBypassCookie(req *http.Request, bypassCode string) bool {
-	if bypassCode == "" {
+// openBypassCookieValue is the cookie value used when bypass is open (AllowBypass=true, no
+// BypassCode configured) — there's no visitor-supplied secret to store instead.
+const openBypassCookieValue = "granted"
+
+// expectedBypassCookieValue returns the cookie value that should be issued/expected for the
+// given maintenance result. Only meaningful when result.allowBypass is true.
+func expectedBypassCookieValue(result maintenanceResult) string {
+	if result.bypassCode != "" {
+		return result.bypassCode
+	}
+
+	return openBypassCookieValue
+}
+
+// hasValidBypassCookie reports whether the request already carries a cookie matching what's
+// currently required (or open) for this app, as returned by Rocket. Because the expected value
+// is derived from the live result, Rocket rotating/clearing a code or disabling bypass entirely
+// invalidates any previously issued cookie automatically.
+func hasValidBypassCookie(req *http.Request, result maintenanceResult) bool {
+	if !result.allowBypass {
 		return false
 	}
 
@@ -21,21 +36,27 @@ func hasValidBypassCookie(req *http.Request, bypassCode string) bool {
 		return false
 	}
 
-	return subtle.ConstantTimeCompare([]byte(cookie.Value), []byte(bypassCode)) == 1
+	return subtle.ConstantTimeCompare([]byte(cookie.Value), []byte(expectedBypassCookieValue(result))) == 1
 }
 
-func isValidBypassCode(submitted string, bypassCode string) bool {
-	if bypassCode == "" {
+// isValidBypassRequest checks a submitted query value against what's required to grant bypass:
+// the exact code when one is configured, or just a non-empty click when bypass is open.
+func isValidBypassRequest(submitted string, result maintenanceResult) bool {
+	if submitted == "" {
 		return false
 	}
 
-	return subtle.ConstantTimeCompare([]byte(submitted), []byte(bypassCode)) == 1
+	if result.bypassCode == "" {
+		return true
+	}
+
+	return subtle.ConstantTimeCompare([]byte(submitted), []byte(result.bypassCode)) == 1
 }
 
-func setBypassCookie(rw http.ResponseWriter, req *http.Request, bypassCode string) {
+func setBypassCookie(rw http.ResponseWriter, req *http.Request, result maintenanceResult) {
 	http.SetCookie(rw, &http.Cookie{
 		Name:     bypassCookieName,
-		Value:    bypassCode,
+		Value:    expectedBypassCookieValue(result),
 		Path:     "/",
 		MaxAge:   bypassCookieMaxAgeSeconds,
 		HttpOnly: true,
@@ -63,7 +84,7 @@ func clearBypassCookieIfPresent(rw http.ResponseWriter, req *http.Request) {
 }
 
 // redirectStrippingBypassParam sends the browser back to the current path without the bypass
-// code query param, so a page refresh after a successful bypass doesn't resubmit it.
+// query param, so a page refresh after a successful bypass doesn't resubmit it.
 func redirectStrippingBypassParam(rw http.ResponseWriter, req *http.Request) {
 	target := req.URL.Path
 	if target == "" {
