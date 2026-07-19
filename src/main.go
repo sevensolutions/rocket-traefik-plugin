@@ -41,7 +41,7 @@ type RocketTraefikPlugin struct {
 
 	fallbackHtml string
 
-	instanceKey     string
+	resourceId      string
 	maintenanceHtml string
 	cacheTtl        time.Duration
 	rocketClient    *rocket.Client

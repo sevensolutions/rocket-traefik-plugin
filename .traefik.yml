@@ -19,6 +19,6 @@ iconPath: .assets/icon.png
 testData:
   LogLevel: DEBUG
   Mode: fallback
-  InstanceKey: test-instance
+  resourceId: test-resource
   RocketBaseUrl: http://localhost
   RocketIdentityHeader: test

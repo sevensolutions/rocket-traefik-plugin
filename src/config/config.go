@@ -1,14 +1,14 @@
 package config
 
 const (
-	ModeFallback    = "fallback"
-	ModeMaintenance = "maintenance"
+	ModeDefault  = "default"
+	ModeFallback = "fallback"
 )
 
 type Config struct {
 	LogLevel string `json:"log_level"`
 
-	// Mode selects the plugin behavior: "fallback" or "maintenance".
+	// Mode selects the plugin behavior: "fallback" or "default".
 	Mode string `json:"mode"`
 
 	// StatusCode is written when this instance serves its static page.
@@ -21,7 +21,7 @@ type Config struct {
 
 	// --- Rocket / maintenance-check fields, required in both modes ---
 	//
-	// "maintenance" Mode checks these on every app route and passes through when not in
+	// "default" Mode checks these on every app route and passes through when not in
 	// maintenance. "fallback" Mode checks the same thing on the priority-1 underlay route:
 	// if the app isn't reachable because Rocket has it in maintenance, the maintenance page
 	// (with bypass) is shown; otherwise the plain FallbackPageFile "unavailable" page is shown,
@@ -31,7 +31,7 @@ type Config struct {
 	// ROCKET_URL and ROCKET_TOKEN environment variables, since they're deployment-wide
 	// secrets/endpoints rather than per-router dynamic config.
 
-	InstanceKey          string `json:"instance_key"`
+	ResourceId           string `json:"resource_id"`
 	RocketTimeoutSeconds int    `json:"rocket_timeout_seconds"`
 	CacheTtlSeconds      int    `json:"cache_ttl_seconds"`
 

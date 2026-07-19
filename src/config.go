@@ -24,7 +24,7 @@ const rocketTokenEnvVar = "ROCKET_TOKEN"
 func CreateConfig() *config.Config {
 	return &config.Config{
 		LogLevel:             logging.LevelWarn,
-		Mode:                 config.ModeFallback,
+		Mode:                 config.ModeDefault,
 		StatusCode:           http.StatusServiceUnavailable,
 		RocketTimeoutSeconds: 5,
 		CacheTtlSeconds:      30,
@@ -41,8 +41,8 @@ func New(uctx context.Context, next http.Handler, cfg *config.Config, name strin
 
 	mode := strings.ToLower(strings.TrimSpace(cfg.Mode))
 
-	if mode != config.ModeFallback && mode != config.ModeMaintenance {
-		return nil, fmt.Errorf("invalid Mode %q, must be %q or %q", cfg.Mode, config.ModeFallback, config.ModeMaintenance)
+	if mode != config.ModeFallback && mode != config.ModeDefault {
+		return nil, fmt.Errorf("invalid Mode %q, must be %q or %q", cfg.Mode, config.ModeFallback, config.ModeDefault)
 	}
 
 	statusCode := cfg.StatusCode
@@ -54,12 +54,12 @@ func New(uctx context.Context, next http.Handler, cfg *config.Config, name strin
 	// real route (passing through when not in maintenance), "fallback" mode does so on the
 	// priority-1 underlay route (showing the plain fallback page when not in maintenance,
 	// since there's no working app route to fall through to in that case).
-	instanceKey := utils.ExpandEnvironmentVariableString(strings.TrimSpace(cfg.InstanceKey))
+	resourceId := utils.ExpandEnvironmentVariableString(strings.TrimSpace(cfg.ResourceId))
 	rocketBaseUrl := strings.TrimSpace(os.Getenv(rocketUrlEnvVar))
 	rocketToken := os.Getenv(rocketTokenEnvVar)
 
-	if instanceKey == "" {
-		return nil, fmt.Errorf("InstanceKey is required")
+	if resourceId == "" {
+		return nil, fmt.Errorf("ResourceId is required")
 	}
 	if rocketBaseUrl == "" {
 		return nil, fmt.Errorf("%s environment variable is required", rocketUrlEnvVar)
@@ -88,7 +88,7 @@ func New(uctx context.Context, next http.Handler, cfg *config.Config, name strin
 		next:            next,
 		mode:            mode,
 		statusCode:      statusCode,
-		instanceKey:     instanceKey,
+		resourceId:      resourceId,
 		cacheTtl:        time.Duration(cacheTtlSeconds) * time.Second,
 		rocketClient:    rocket.NewClient(rocketBaseUrl, rocketToken, time.Duration(timeoutSeconds)*time.Second, logger),
 		maintenanceHtml: maintenanceHtml,

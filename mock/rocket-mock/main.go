@@ -39,18 +39,18 @@ type store struct {
 	byInstance map[string]maintenanceStatus
 }
 
-func (s *store) get(instanceKey string) maintenanceStatus {
+func (s *store) get(resourceId string) maintenanceStatus {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	return s.byInstance[instanceKey] // zero value = not in maintenance
+	return s.byInstance[resourceId] // zero value = not in maintenance
 }
 
-func (s *store) set(instanceKey string, status maintenanceStatus) {
+func (s *store) set(resourceId string, status maintenanceStatus) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.byInstance[instanceKey] = status
+	s.byInstance[resourceId] = status
 }
 
 func main() {
@@ -58,10 +58,10 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// GET matches Rocket's real endpoint: api/v1/ingress/traefik/instances/{instanceKey}/status.
+	// GET matches Rocket's real endpoint: api/v1/ingress/traefik/instances/{resourceId}/status.
 	// POST/PUT is mock-only test-control, used by taskfile.yml to seed maintenance state.
 	mux.HandleFunc("/api/v1/ingress/traefik/instances/", func(rw http.ResponseWriter, req *http.Request) {
-		instanceKey, ok := parseInstanceKey(req.URL.Path)
+		resourceId, ok := parseResourceId(req.URL.Path)
 		if !ok {
 			http.NotFound(rw, req)
 			return
@@ -70,9 +70,9 @@ func main() {
 		switch req.Method {
 		case http.MethodGet:
 			identity := req.Header.Get("X-Rocket-Identity")
-			log.Printf("GET status for instance=%q identity=%q", instanceKey, identity)
+			log.Printf("GET status for instance=%q identity=%q", resourceId, identity)
 
-			status := s.get(instanceKey)
+			status := s.get(resourceId)
 
 			writeJson(rw, http.StatusOK, statusResponse{
 				MaintenanceMode: &maintenanceMode{
@@ -90,8 +90,8 @@ func main() {
 				return
 			}
 
-			s.set(instanceKey, status)
-			log.Printf("SET maintenance status for instance=%q -> %+v", instanceKey, status)
+			s.set(resourceId, status)
+			log.Printf("SET maintenance status for instance=%q -> %+v", resourceId, status)
 
 			writeJson(rw, http.StatusOK, status)
 
@@ -104,9 +104,9 @@ func main() {
 	log.Fatal(http.ListenAndServe(":80", mux))
 }
 
-// parseInstanceKey extracts {instanceKey} from
-// /api/v1/ingress/traefik/instances/{instanceKey}/status.
-func parseInstanceKey(path string) (string, bool) {
+// parseResourceId extracts {resourceId} from
+// /api/v1/ingress/traefik/instances/{resourceId}/status.
+func parseResourceId(path string) (string, bool) {
 	const prefix = "/api/v1/ingress/traefik/instances/"
 	const suffix = "/status"
 
@@ -114,12 +114,12 @@ func parseInstanceKey(path string) (string, bool) {
 		return "", false
 	}
 
-	instanceKey := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
-	if instanceKey == "" {
+	resourceId := strings.TrimSuffix(strings.TrimPrefix(path, prefix), suffix)
+	if resourceId == "" {
 		return "", false
 	}
 
-	return instanceKey, true
+	return resourceId, true
 }
 
 func writeJson(rw http.ResponseWriter, statusCode int, body any) {

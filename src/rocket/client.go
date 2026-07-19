@@ -43,11 +43,11 @@ func NewClient(baseUrl string, authToken string, timeout time.Duration, logger *
 	}
 }
 
-func (c *Client) CheckMaintenance(ctx context.Context, instanceKey string) (MaintenanceStatus, error) {
+func (c *Client) CheckMaintenance(ctx context.Context, resourceId string) (MaintenanceStatus, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.Timeout)
 	defer cancel()
 
-	requestUrl := c.BaseUrl + "/api/v1/ingress/traefik/instances/" + url.PathEscape(instanceKey) + "/status"
+	requestUrl := c.BaseUrl + "/api/v1/ingress/traefik/instances/" + url.PathEscape(resourceId) + "/status"
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl, nil)
 	if err != nil {
