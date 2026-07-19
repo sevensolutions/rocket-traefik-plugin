@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -13,6 +14,12 @@ import (
 	"github.com/sevensolutions/rocket-traefik-plugin/src/rocket"
 	"github.com/sevensolutions/rocket-traefik-plugin/src/utils"
 )
+
+// Rocket's base URL and auth token are deliberately not part of the dynamic (per-middleware)
+// config: they're deployment-wide secrets/endpoints, not something that should vary between
+// routers or be visible in Traefik's dynamic configuration.
+const rocketUrlEnvVar = "ROCKET_URL"
+const rocketTokenEnvVar = "ROCKET_TOKEN"
 
 func CreateConfig() *config.Config {
 	return &config.Config{
@@ -47,15 +54,18 @@ func New(uctx context.Context, next http.Handler, cfg *config.Config, name strin
 	// real route (passing through when not in maintenance), "fallback" mode does so on the
 	// priority-1 underlay route (showing the plain fallback page when not in maintenance,
 	// since there's no working app route to fall through to in that case).
-	appId := utils.ExpandEnvironmentVariableString(strings.TrimSpace(cfg.AppId))
-	rocketBaseUrl := utils.ExpandEnvironmentVariableString(strings.TrimSpace(cfg.RocketBaseUrl))
-	identityHeader := utils.ExpandEnvironmentVariableString(cfg.RocketIdentityHeader)
+	instanceKey := utils.ExpandEnvironmentVariableString(strings.TrimSpace(cfg.InstanceKey))
+	rocketBaseUrl := strings.TrimSpace(os.Getenv(rocketUrlEnvVar))
+	rocketToken := os.Getenv(rocketTokenEnvVar)
 
-	if appId == "" {
-		return nil, fmt.Errorf("AppId is required")
+	if instanceKey == "" {
+		return nil, fmt.Errorf("InstanceKey is required")
 	}
 	if rocketBaseUrl == "" {
-		return nil, fmt.Errorf("RocketBaseUrl is required")
+		return nil, fmt.Errorf("%s environment variable is required", rocketUrlEnvVar)
+	}
+	if rocketToken == "" {
+		return nil, fmt.Errorf("%s environment variable is required", rocketTokenEnvVar)
 	}
 
 	timeoutSeconds := cfg.RocketTimeoutSeconds
@@ -78,9 +88,9 @@ func New(uctx context.Context, next http.Handler, cfg *config.Config, name strin
 		next:            next,
 		mode:            mode,
 		statusCode:      statusCode,
-		appId:           appId,
+		instanceKey:     instanceKey,
 		cacheTtl:        time.Duration(cacheTtlSeconds) * time.Second,
-		rocketClient:    rocket.NewClient(rocketBaseUrl, identityHeader, time.Duration(timeoutSeconds)*time.Second, logger),
+		rocketClient:    rocket.NewClient(rocketBaseUrl, rocketToken, time.Duration(timeoutSeconds)*time.Second, logger),
 		maintenanceHtml: maintenanceHtml,
 	}
 

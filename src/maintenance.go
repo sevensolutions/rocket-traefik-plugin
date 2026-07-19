@@ -28,17 +28,17 @@ func (p *RocketTraefikPlugin) checkMaintenance() maintenanceResult {
 		return p.cache.toResult()
 	}
 
-	status, err := p.rocketClient.CheckMaintenance(context.Background(), p.appId)
+	status, err := p.rocketClient.CheckMaintenance(context.Background(), p.instanceKey)
 
 	if err != nil {
-		p.logger.Log(logging.LevelWarn, "Failed to fetch maintenance status from Rocket for app %q: %s", p.appId, err)
+		p.logger.Log(logging.LevelWarn, "Failed to fetch maintenance status from Rocket for instance %q: %s", p.instanceKey, err)
 
 		if p.cache.hasValue {
-			p.logger.Log(logging.LevelDebug, "Serving stale cached maintenance status for app %q", p.appId)
+			p.logger.Log(logging.LevelDebug, "Serving stale cached maintenance status for instance %q", p.instanceKey)
 			return p.cache.toResult()
 		}
 
-		p.logger.Log(logging.LevelWarn, "No cached maintenance status for app %q yet, failing open", p.appId)
+		p.logger.Log(logging.LevelWarn, "No cached maintenance status for instance %q yet, failing open", p.instanceKey)
 		return maintenanceResult{}
 	}
 

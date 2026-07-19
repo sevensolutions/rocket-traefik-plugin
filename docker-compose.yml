@@ -8,6 +8,11 @@ services:
       - "./configs/traefik-config.yml:/etc/traefik/traefik.yml:ro"
       - "./configs/http.yml:/etc/traefik/configs/http.yml:ro"
       - "./:/plugins-local/src/github.com/sevensolutions/rocket-traefik-plugin:ro"
+    environment:
+      - "ROCKET_URL=http://rocket-mock:80"
+      - "ROCKET_TOKEN=1234"
+    #env_file:
+    #  - ./env
 
   whoami:
     image: "traefik/whoami:latest"

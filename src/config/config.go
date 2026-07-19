@@ -26,10 +26,12 @@ type Config struct {
 	// if the app isn't reachable because Rocket has it in maintenance, the maintenance page
 	// (with bypass) is shown; otherwise the plain FallbackPageFile "unavailable" page is shown,
 	// since there's no real app behind this route to fall through to.
+	//
+	// Rocket's base URL and auth token are NOT configured here: they're read directly from the
+	// ROCKET_URL and ROCKET_TOKEN environment variables, since they're deployment-wide
+	// secrets/endpoints rather than per-router dynamic config.
 
-	AppId                string `json:"app_id"`
-	RocketBaseUrl        string `json:"rocket_base_url"`
-	RocketIdentityHeader string `json:"rocket_identity_header"`
+	InstanceKey          string `json:"instance_key"`
 	RocketTimeoutSeconds int    `json:"rocket_timeout_seconds"`
 	CacheTtlSeconds      int    `json:"cache_ttl_seconds"`
 

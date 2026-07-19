@@ -11,7 +11,7 @@ http:
         rocket-traefik-plugin:
           LogLevel: DEBUG
           Mode: maintenance
-          AppId: whoami
+          InstanceKey: 019e27d03e107969a2f094345b67a5ff
           RocketBaseUrl: http://rocket-mock:80
           RocketIdentityHeader: local-dev-secret
           CacheTtlSeconds: 5
@@ -21,7 +21,7 @@ http:
         rocket-traefik-plugin:
           LogLevel: DEBUG
           Mode: fallback
-          AppId: whoami
+          InstanceKey: 019e27d03e107969a2f094345b67a5ff
           RocketBaseUrl: http://rocket-mock:80
           RocketIdentityHeader: local-dev-secret
           CacheTtlSeconds: 5

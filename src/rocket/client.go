@@ -43,11 +43,11 @@ func NewClient(baseUrl string, authToken string, timeout time.Duration, logger *
 	}
 }
 
-func (c *Client) CheckMaintenance(ctx context.Context, appId string) (MaintenanceStatus, error) {
+func (c *Client) CheckMaintenance(ctx context.Context, instanceKey string) (MaintenanceStatus, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.Timeout)
 	defer cancel()
 
-	requestUrl := c.BaseUrl + "/api/v1/apps/" + url.PathEscape(appId) + "/maintenance"
+	requestUrl := c.BaseUrl + "/api/v1/ingress/traefik/instances/" + url.PathEscape(instanceKey) + "/status"
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestUrl, nil)
 	if err != nil {
@@ -68,19 +68,27 @@ func (c *Client) CheckMaintenance(ctx context.Context, appId string) (Maintenanc
 	}
 
 	var parsed struct {
-		MaintenanceEnabled bool   `json:"maintenanceEnabled"`
-		Message            string `json:"message"`
-		AllowBypass        bool   `json:"allowBypass"`
-		BypassCode         string `json:"bypassCode"`
+		MaintenanceMode *struct {
+			IsEnabled   bool   `json:"isEnabled"`
+			Message     string `json:"message"`
+			AllowBypass bool   `json:"allowBypass"`
+			BypassCode  string `json:"bypassCode"`
+		} `json:"maintenanceMode"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
 		return MaintenanceStatus{}, fmt.Errorf("failed to decode rocket response: %w", err)
 	}
 
+	// A nil MaintenanceMode means Rocket has no maintenance mode configured for this
+	// instance at all, which is equivalent to it being disabled.
+	if parsed.MaintenanceMode == nil {
+		return MaintenanceStatus{}, nil
+	}
+
 	return MaintenanceStatus{
-		Enabled:     parsed.MaintenanceEnabled,
-		Message:     parsed.Message,
-		AllowBypass: parsed.AllowBypass,
-		BypassCode:  parsed.BypassCode,
+		Enabled:     parsed.MaintenanceMode.IsEnabled,
+		Message:     parsed.MaintenanceMode.Message,
+		AllowBypass: parsed.MaintenanceMode.AllowBypass,
+		BypassCode:  parsed.MaintenanceMode.BypassCode,
 	}, nil
 }
