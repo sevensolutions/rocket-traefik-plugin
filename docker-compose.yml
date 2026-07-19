@@ -12,7 +12,7 @@ services:
       - "ROCKET_URL=http://rocket-mock:80"
       - "ROCKET_TOKEN=1234"
     #env_file:
-    #  - ./env
+    #  - ./.env
 
   whoami:
     image: "traefik/whoami:latest"
