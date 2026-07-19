@@ -57,7 +57,7 @@ func (p *RocketTraefikPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Reques
 		if p.mode == config.ModeFallback {
 			// Not in maintenance, so the app is simply unreachable (not running) — there's no
 			// working route to fall through to.
-			p.writeHtmlPage(rw, p.fallbackHtml)
+			p.writeFallbackPage(rw, req)
 			return
 		}
 
@@ -78,12 +78,12 @@ func (p *RocketTraefikPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Reques
 				return
 			}
 
-			p.writeMaintenancePage(rw, result, true)
+			p.writeMaintenancePage(rw, req, result, true)
 			return
 		}
 	}
 
-	p.writeMaintenancePage(rw, result, false)
+	p.writeMaintenancePage(rw, req, result, false)
 }
 
 func (p *RocketTraefikPlugin) writeHtmlPage(rw http.ResponseWriter, htmlContent string) {
@@ -92,10 +92,24 @@ func (p *RocketTraefikPlugin) writeHtmlPage(rw http.ResponseWriter, htmlContent 
 	rw.Write([]byte(htmlContent))
 }
 
-func (p *RocketTraefikPlugin) writeMaintenancePage(rw http.ResponseWriter, result maintenanceResult, invalidBypassCode bool) {
+func (p *RocketTraefikPlugin) writeFallbackPage(rw http.ResponseWriter, req *http.Request) {
+	if wantsJSON(req) {
+		writeProblemDetails(rw, p.statusCode, "Application Unavailable", pages.DefaultFallbackMessage)
+		return
+	}
+
+	p.writeHtmlPage(rw, p.fallbackHtml)
+}
+
+func (p *RocketTraefikPlugin) writeMaintenancePage(rw http.ResponseWriter, req *http.Request, result maintenanceResult, invalidBypassCode bool) {
 	message := result.message
 	if message == "" {
 		message = pages.DefaultMaintenanceMessage
+	}
+
+	if wantsJSON(req) {
+		writeProblemDetails(rw, p.statusCode, "Under Maintenance", message)
+		return
 	}
 
 	bypassForm := ""

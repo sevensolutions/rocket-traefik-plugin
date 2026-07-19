@@ -9,6 +9,8 @@ import (
 
 const DefaultMaintenanceMessage = "This application is currently undergoing scheduled maintenance. Please check back soon."
 
+const DefaultFallbackMessage = "This application is currently unavailable. Please try again shortly."
+
 // BypassQueryParam is the query/form field name used to submit a maintenance bypass code.
 const BypassQueryParam = "rocket_bypass_code"
 
@@ -112,7 +114,7 @@ const DefaultFallbackHtml = `<!doctype html>
   <div class="card">
     <div class="icon-badge">` + alertTriangleIconSvg + `</div>
     <h1>Application Unavailable</h1>
-    <p class="message">This application is currently unavailable. Please try again shortly.</p>
+    <p class="message">` + DefaultFallbackMessage + `</p>
   </div>
 </div>
 </body>
