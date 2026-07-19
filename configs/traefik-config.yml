@@ -1,0 +1,30 @@
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: true
+
+entryPoints:
+  web:
+    address: :80
+  websecure:
+    address: :443
+
+# Enable API and dashboard
+api:
+  insecure: true
+  dashboard: true
+  debug: true
+
+experimental:
+  localPlugins:
+    rocket-traefik-plugin:
+      moduleName: github.com/sevensolutions/rocket-traefik-plugin
+  # To test the released version
+  #plugins:
+  #  rocket-traefik-plugin:
+  #    moduleName: "github.com/sevensolutions/rocket-traefik-plugin"
+  #    version: v0.20.1
+  
+providers:
+  file:
+    filename: /etc/traefik/configs/http.yml
+    watch: true

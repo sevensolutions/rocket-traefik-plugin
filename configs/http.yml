@@ -1,0 +1,19 @@
+http:
+  services:
+    whoami:
+      loadBalancer:
+        servers:
+          - url: http://whoami:80
+
+  middlewares:
+    rocket-traefik-plugin:
+      plugin:
+        rocket-traefik-plugin:
+          LogLevel: DEBUG
+
+  routers:
+    whoami:
+      entryPoints: ["web"]
+      rule: "HostRegexp(`.+`)"
+      service: whoami
+      middlewares: ["rocket-traefik-plugin@file"]
