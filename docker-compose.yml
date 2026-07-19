@@ -11,3 +11,14 @@ services:
 
   whoami:
     image: "traefik/whoami:latest"
+
+  rocket-mock:
+    image: "golang:1.23-alpine"
+    working_dir: /app
+    environment:
+      GOCACHE: /tmp/gocache
+    volumes:
+      - "./:/app:ro"
+    command: ["go", "run", "./mock/rocket-mock"]
+    ports:
+      - "9081:80"

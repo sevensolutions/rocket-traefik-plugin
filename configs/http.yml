@@ -6,14 +6,38 @@ http:
           - url: http://whoami:80
 
   middlewares:
-    rocket-traefik-plugin:
+    rocket-maintenance:
       plugin:
         rocket-traefik-plugin:
           LogLevel: DEBUG
+          Mode: maintenance
+          AppId: whoami
+          RocketBaseUrl: http://rocket-mock:80
+          RocketIdentityHeader: local-dev-secret
+          CacheTtlSeconds: 5
+
+    rocket-fallback:
+      plugin:
+        rocket-traefik-plugin:
+          LogLevel: DEBUG
+          Mode: fallback
 
   routers:
+    # The "real" app route. Only wins while the whoami container/router is present,
+    # since it has a higher priority than the fallback route below.
     whoami:
       entryPoints: ["web"]
       rule: "HostRegexp(`.+`)"
+      priority: 10
       service: whoami
-      middlewares: ["rocket-traefik-plugin@file"]
+      middlewares: ["rocket-maintenance@file"]
+
+    # Underlay fallback route (priority 1). Traefik only falls through here when no
+    # higher-priority dynamic app router matches. Always serves the static
+    # "unavailable" page and never forwards to the backend.
+    whoami-fallback:
+      entryPoints: ["web"]
+      rule: "HostRegexp(`.+`)"
+      priority: 1
+      service: whoami
+      middlewares: ["rocket-fallback@file"]

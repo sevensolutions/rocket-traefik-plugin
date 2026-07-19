@@ -18,3 +18,4 @@ iconPath: .assets/icon.png
 # This is mandatory, and Plugins Catalog will try to execute the plugin with the data you provide as part of its startup validity tests.
 testData:
   LogLevel: DEBUG
+  Mode: fallback

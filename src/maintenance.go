@@ -1,0 +1,46 @@
+package src
+
+import (
+	"context"
+	"time"
+
+	"github.com/sevensolutions/rocket-traefik-plugin/src/logging"
+)
+
+// checkMaintenance returns the current maintenance status (and bypass code, if Rocket
+// supplied one) for this plugin instance's app, refreshing from Rocket when the cached
+// value is missing or has expired.
+//
+// On a Rocket error, a stale cached value is served rather than failing open, so a transient
+// Rocket outage doesn't briefly disable maintenance mode. Only when there has never been a
+// successful check does this fail open (treat as not-in-maintenance).
+func (p *RocketTraefikPlugin) checkMaintenance() (bool, string, string) {
+	p.cache.mu.Lock()
+	defer p.cache.mu.Unlock()
+
+	if p.cache.hasValue && time.Since(p.cache.fetchedAt) < p.cacheTtl {
+		return p.cache.enabled, p.cache.message, p.cache.bypassCode
+	}
+
+	status, err := p.rocketClient.CheckMaintenance(context.Background(), p.appId)
+
+	if err != nil {
+		p.logger.Log(logging.LevelWarn, "Failed to fetch maintenance status from Rocket for app %q: %s", p.appId, err)
+
+		if p.cache.hasValue {
+			p.logger.Log(logging.LevelDebug, "Serving stale cached maintenance status for app %q", p.appId)
+			return p.cache.enabled, p.cache.message, p.cache.bypassCode
+		}
+
+		p.logger.Log(logging.LevelWarn, "No cached maintenance status for app %q yet, failing open", p.appId)
+		return false, "", ""
+	}
+
+	p.cache.hasValue = true
+	p.cache.enabled = status.Enabled
+	p.cache.message = status.Message
+	p.cache.bypassCode = status.BypassCode
+	p.cache.fetchedAt = time.Now()
+
+	return status.Enabled, status.Message, status.BypassCode
+}

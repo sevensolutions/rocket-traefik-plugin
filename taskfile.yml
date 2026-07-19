@@ -1,0 +1,45 @@
+version: "3"
+
+vars:
+  APP_ID: '{{.APP_ID | default "whoami"}}'
+  MOCK_URL: '{{.MOCK_URL | default "http://localhost:9081"}}'
+
+tasks:
+  up:
+    desc: Start traefik, whoami and the rocket-mock server
+    cmds:
+      - docker compose up -d
+
+  down:
+    desc: Stop and remove the local dev stack
+    cmds:
+      - docker compose down
+
+  logs:
+    desc: Tail logs from the local dev stack
+    cmds:
+      - docker compose logs -f
+
+  maintenance:on:
+    desc: "Turn maintenance mode on for an app (APP_ID=..., MESSAGE=..., BYPASS_CODE=...)"
+    vars:
+      MESSAGE: '{{.MESSAGE | default "We are upgrading things, come back soon!"}}'
+      BYPASS_CODE: '{{.BYPASS_CODE | default "1234"}}'
+    cmds:
+      - |
+        curl -X POST {{.MOCK_URL}}/api/v1/apps/{{.APP_ID}}/maintenance \
+          -H "Content-Type: application/json" \
+          -d '{"maintenanceEnabled": true, "message": "{{.MESSAGE}}", "bypassCode": "{{.BYPASS_CODE}}"}'
+
+  maintenance:off:
+    desc: "Turn maintenance mode off for an app (APP_ID=...)"
+    cmds:
+      - |
+        curl -X POST {{.MOCK_URL}}/api/v1/apps/{{.APP_ID}}/maintenance \
+          -H "Content-Type: application/json" \
+          -d '{"maintenanceEnabled": false}'
+
+  maintenance:status:
+    desc: "Show current maintenance status for an app (APP_ID=...)"
+    cmds:
+      - curl -s {{.MOCK_URL}}/api/v1/apps/{{.APP_ID}}/maintenance
