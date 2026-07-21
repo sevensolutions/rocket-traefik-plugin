@@ -83,6 +83,14 @@ func New(uctx context.Context, next http.Handler, cfg *config.Config, name strin
 		return nil, fmt.Errorf("failed to load MaintenancePageFile: %w", err)
 	}
 
+	// Loaded in both modes: "fallback" mode shows it whenever the underlay route is hit at
+	// all, and "default" mode shows it when the real app route's backend itself returns an
+	// upstream error (see upstreamErrorInterceptor) rather than the app being unreachable.
+	fallbackHtml, err := pages.ResolveFile(cfg.FallbackPageFile, pages.DefaultFallbackHtml)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load FallbackPageFile: %w", err)
+	}
+
 	plugin := &RocketTraefikPlugin{
 		logger:          logger,
 		next:            next,
@@ -92,14 +100,7 @@ func New(uctx context.Context, next http.Handler, cfg *config.Config, name strin
 		cacheTtl:        time.Duration(cacheTtlSeconds) * time.Second,
 		rocketClient:    rocket.NewClient(rocketBaseUrl, rocketToken, time.Duration(timeoutSeconds)*time.Second, logger),
 		maintenanceHtml: maintenanceHtml,
-	}
-
-	if mode == config.ModeFallback {
-		fallbackHtml, err := pages.ResolveFile(cfg.FallbackPageFile, pages.DefaultFallbackHtml)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load FallbackPageFile: %w", err)
-		}
-		plugin.fallbackHtml = fallbackHtml
+		fallbackHtml:    fallbackHtml,
 	}
 
 	logger.Log(logging.LevelInfo, "Configuration loaded successfully, starting middleware in %q mode...", mode)

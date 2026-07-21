@@ -61,7 +61,17 @@ func (p *RocketTraefikPlugin) ServeHTTP(rw http.ResponseWriter, req *http.Reques
 			return
 		}
 
-		p.next.ServeHTTP(rw, req)
+		// The app route exists and Rocket doesn't report maintenance, but the backend behind
+		// it may still be down (container crashed, deploy in progress, etc.), in which case
+		// Traefik's own reverse proxy responds with a Bad Gateway/Service Unavailable/Gateway
+		// Timeout. Intercept that instead of relaying it, so the visitor sees the fallback
+		// page rather than a raw proxy error.
+		interceptor := &upstreamErrorInterceptor{rw: rw}
+		p.next.ServeHTTP(interceptor, req)
+
+		if interceptor.intercepting {
+			p.writeFallbackPage(rw, req)
+		}
 		return
 	}
 

@@ -16,7 +16,8 @@ type Config struct {
 
 	// FallbackPageFile overrides the built-in fallback HTML with the contents of a file on
 	// disk. Empty = use the default. Supports ${VAR} expansion, e.g. "${PAGES_DIR}/fallback.html".
-	// Only used in "fallback" Mode.
+	// Used in "fallback" Mode whenever the underlay route is hit, and in "default" Mode when
+	// the app's own backend returns a Bad Gateway/Service Unavailable/Gateway Timeout response.
 	FallbackPageFile string `json:"fallback_page_file"`
 
 	// --- Rocket / maintenance-check fields, required in both modes ---
